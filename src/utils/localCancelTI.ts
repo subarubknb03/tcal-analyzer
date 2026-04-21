@@ -15,26 +15,32 @@ function matMul(A: number[][], B: number[][]): number[][] {
   return C;
 }
 
-function buildFilterMatrix(atoms: Atom[], cancelRatio: number, precomputedAdj?: number[][]): number[][] {
+// H1 = A * D^{-1}: column-stochastic (each column sums to 1)
+function buildH1(atoms: Atom[], cancelRatio: number, precomputedAdj?: number[][]): number[][] {
   const adj = precomputedAdj ?? buildAdjacencyMatrix(atoms);
   const n = atoms.length;
-
-  // A_mod = cancelRatio * adj + I
   const aMod = adj.map((row, i) =>
     row.map((v, j) => cancelRatio * v + (i === j ? 1 : 0))
   );
-
-  // D[i] = row sum of A_mod
-  const d = aMod.map(row => row.reduce((s, v) => s + v, 0));
-
-  // filter[i][j] = A_mod[i][j] / sqrt(D[i] * D[j])
-  const filter = Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (_, j) =>
-      aMod[i][j] / Math.sqrt(d[i] * d[j])
-    )
+  const d = Array.from({ length: n }, (_, j) =>
+    aMod.reduce((s, row) => s + row[j], 0)
   );
+  return Array.from({ length: n }, (_, i) =>
+    Array.from({ length: n }, (_, j) => aMod[i][j] / d[j])
+  );
+}
 
-  return filter;
+// H2 = E^{-1} * B: row-stochastic (each row sums to 1)
+function buildH2(atoms: Atom[], cancelRatio: number, precomputedAdj?: number[][]): number[][] {
+  const adj = precomputedAdj ?? buildAdjacencyMatrix(atoms);
+  const n = atoms.length;
+  const aMod = adj.map((row, i) =>
+    row.map((v, j) => cancelRatio * v + (i === j ? 1 : 0))
+  );
+  const e = aMod.map(row => row.reduce((s, v) => s + v, 0));
+  return Array.from({ length: n }, (_, i) =>
+    Array.from({ length: n }, (_, j) => aMod[i][j] / e[i])
+  );
 }
 
 function matPow(M: number[][], n: number): number[][] {
@@ -55,7 +61,7 @@ export function calLocalCancelTI(
   bonds1?: number[][],
   bonds2?: number[][]
 ): number[][] {
-  const filter1 = matPow(buildFilterMatrix(atoms1, cancelRatio, bonds1), power);
-  const filter2 = matPow(buildFilterMatrix(atoms2, cancelRatio, bonds2), power);
+  const filter1 = matPow(buildH1(atoms1, cancelRatio, bonds1), power);
+  const filter2 = matPow(buildH2(atoms2, cancelRatio, bonds2), power);
   return matMul(matMul(filter1, tiMatrix), filter2);
 }
