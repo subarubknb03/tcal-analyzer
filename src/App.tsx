@@ -30,6 +30,16 @@ export default function App() {
     return m.reduce((sum, row) => sum + row.reduce((s, v) => s + v, 0), 0);
   }, [displayMatrix, csv]);
 
+  const swapMonomers = () => {
+    setMol1(mol2);
+    setMol2(mol1);
+  };
+
+  const swapCubes = () => {
+    setCube1(cube2);
+    setCube2(cube1);
+  };
+
   const handleAtomClick = useCallback((monomer: 1 | 2, atomIndex: number) => {
     setSelected(prev => {
       if (monomer === 1) return { row: atomIndex, col: prev?.col ?? 0 };
@@ -54,6 +64,8 @@ export default function App() {
         onCsvChange={setCsv}
         onCube1Change={setCube1}
         onCube2Change={setCube2}
+        onSwapMonomers={swapMonomers}
+        onSwapCubes={swapCubes}
       />
 
       <div className="flex-1 grid grid-cols-2 gap-4" style={{ minHeight: '60vh' }}>
