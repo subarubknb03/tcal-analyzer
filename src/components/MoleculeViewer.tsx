@@ -70,8 +70,9 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
       monomer: 1 | 2,
       highlightIdx: number | null,
     ) => {
-      const xyz = atomsToXyz(mol.atoms, 0);
-      const model = viewer.addModel(xyz, 'xyz');
+      const model = mol.rawMolText
+        ? viewer.addModel(mol.rawMolText, 'sdf')
+        : viewer.addModel(atomsToXyz(mol.atoms, 0), 'xyz');
       model.setStyle({}, {
         sphere: { radius: 0.3, colorfunc: (atom: { elem: string }) => cpkColor(atom.elem) },
         stick: { radius: 0.1, color: defaultColor },

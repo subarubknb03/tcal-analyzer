@@ -7,6 +7,8 @@ export interface Atom {
 
 export interface ParsedMolecule {
   atoms: Atom[];
+  bonds?: number[][];
+  rawMolText?: string;
 }
 
 export interface ParsedCsv {

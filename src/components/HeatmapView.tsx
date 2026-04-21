@@ -6,11 +6,12 @@ import type { ParsedCsv, SelectedPair } from '../types';
 
 interface Props {
   csv: ParsedCsv | null;
+  displayMatrix?: number[][] | null;
   selectedPair: SelectedPair | null;
   onCellClick: (row: number, col: number) => void;
 }
 
-export function HeatmapView({ csv, selectedPair, onCellClick }: Props) {
+export function HeatmapView({ csv, displayMatrix, selectedPair, onCellClick }: Props) {
   if (!csv) {
     return (
       <div className="flex items-center justify-center h-full text-slate-400 text-sm">
@@ -19,11 +20,13 @@ export function HeatmapView({ csv, selectedPair, onCellClick }: Props) {
     );
   }
 
+  const matrix = displayMatrix ?? csv.matrix;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const plotData: any[] = [
     {
       type: 'heatmap',
-      z: csv.matrix,
+      z: matrix,
       x: csv.colLabels,
       y: csv.rowLabels,
       colorscale: 'RdBu',

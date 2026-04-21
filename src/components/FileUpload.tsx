@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import type { ParsedMolecule, ParsedCsv, ParsedCube } from '../types';
 import { parseGjf } from '../parsers/gjf';
 import { parseXyz } from '../parsers/xyz';
+import { parseMol } from '../parsers/mol';
 import { parseCsv } from '../parsers/csv';
 import { parseCube } from '../parsers/cube';
 
@@ -23,7 +24,9 @@ function readTextFile(file: File): Promise<string> {
 }
 
 function parseMolFile(filename: string, text: string): ParsedMolecule {
-  return filename.endsWith('.gjf') ? parseGjf(text) : parseXyz(text);
+  if (filename.endsWith('.gjf')) return parseGjf(text);
+  if (filename.endsWith('.mol')) return parseMol(text);
+  return parseXyz(text);
 }
 
 interface DropZoneProps {
@@ -87,14 +90,14 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
     <div className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow">
       <div className="grid grid-cols-3 gap-3">
         <DropZone
-          label="Monomer 1 (.gjf / .xyz)"
-          accept=".gjf,.xyz"
+          label="Monomer 1 (.gjf / .xyz / .mol)"
+          accept=".gjf,.xyz,.mol"
           loaded={mol1Loaded}
           onFile={f => handleMol(f, onMol1Change, () => setMol1Loaded(true))}
         />
         <DropZone
-          label="Monomer 2 (.gjf / .xyz)"
-          accept=".gjf,.xyz"
+          label="Monomer 2 (.gjf / .xyz / .mol)"
+          accept=".gjf,.xyz,.mol"
           loaded={mol2Loaded}
           onFile={f => handleMol(f, onMol2Change, () => setMol2Loaded(true))}
         />
