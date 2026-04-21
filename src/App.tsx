@@ -25,9 +25,10 @@ export default function App() {
   }, [localBlurEnabled, csv, mol1, mol2, cancelRatio, hPower]);
 
   const molecularTI = useMemo(() => {
-    if (!csv) return null;
-    return csv.matrix.reduce((sum, row) => sum + row.reduce((s, v) => s + v, 0), 0);
-  }, [csv]);
+    const m = displayMatrix ?? csv?.matrix;
+    if (!m) return null;
+    return m.reduce((sum, row) => sum + row.reduce((s, v) => s + v, 0), 0);
+  }, [displayMatrix, csv]);
 
   const handleAtomClick = useCallback((monomer: 1 | 2, atomIndex: number) => {
     setSelected(prev => {

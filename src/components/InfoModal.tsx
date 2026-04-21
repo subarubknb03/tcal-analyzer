@@ -74,28 +74,25 @@ export function InfoModal({ onClose }: Props) {
           </div>
 
           <div className="bg-slate-50 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 mb-1">② Adjacency matrix with self-loops <M tex="\tilde{A}" /></p>
-            <M block tex="\tilde{A} = w \cdot A + I" />
-            <p className="text-xs text-slate-400 mt-1">When <M tex="w=0" />, <M tex="\tilde{A}=I" /> (no smoothing)</p>
+            <p className="text-xs text-slate-500 mb-1">② Adjacency matrices with self-loops <M tex="\tilde{A},\,\tilde{B}" /></p>
+            <M block tex="\tilde{A} = w \cdot A_1 + I \qquad \tilde{B} = w \cdot A_2 + I" />
+            <p className="text-xs text-slate-400 mt-1"><M tex="A_1, A_2" />: adjacency matrices of monomer 1 and 2. When <M tex="w=0" />, no smoothing.</p>
           </div>
 
           <div className="bg-slate-50 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 mb-1">③ Degree matrix <M tex="\tilde{D}" /></p>
-            <M block tex="\tilde{D}_{ii} = \sum_{j} \tilde{A}_{ij}" />
+            <p className="text-xs text-slate-500 mb-1">③ Column-sum matrix <M tex="D" /> (from <M tex="\tilde{A}" />) and row-sum matrix <M tex="E" /> (from <M tex="\tilde{B}" />)</p>
+            <M block tex="D_{jj} = \sum_{i} \tilde{A}_{ij} \qquad E_{ii} = \sum_{j} \tilde{B}_{ij}" />
           </div>
 
           <div className="bg-slate-50 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 mb-1">④ Symmetric normalized Laplacian <M tex="L_{\mathrm{sym}}" /></p>
-            <M block tex="L_{\mathrm{sym}} = I - \tilde{D}^{-1/2}\tilde{A}\tilde{D}^{-1/2}" />
-          </div>
-
-          <div className="bg-slate-50 rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500 mb-1">⑤ Filter matrix <M tex="H" /></p>
-            <M block tex="H = I - L_{\mathrm{sym}} = \tilde{D}^{-1/2}\tilde{A}\tilde{D}^{-1/2}" />
+            <p className="text-xs text-slate-500 mb-1">④ Filter matrices <M tex="H_1" /> (column-stochastic) and <M tex="H_2" /> (row-stochastic)</p>
+            <M block tex="H_1 = \tilde{A}\,D^{-1} \quad \Bigl(\sum_i H_{1,ij}=1\Bigr)" />
+            <M block tex="H_2 = E^{-1}\tilde{B} \quad \Bigl(\sum_j H_{2,ij}=1\Bigr)" />
+            <p className="text-xs text-slate-400 mt-1">Ensures <M tex="\sum_{ij}U'_{ij} = \sum_{ij}U_{ij}" /></p>
           </div>
 
           <div className="bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
-            <p className="text-xs text-blue-600 font-medium mb-1">⑥ Smoothed transfer integral</p>
+            <p className="text-xs text-blue-600 font-medium mb-1">⑤ Smoothed transfer integral</p>
             <M block tex="U' = H_1^n \, U \, H_2^n" />
             <p className="text-xs text-slate-500 mt-1">
               <M tex="H_1, H_2" />: filter matrices for monomer 1 and 2. <M tex="n" /> = Apply Count
