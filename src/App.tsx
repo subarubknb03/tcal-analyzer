@@ -24,6 +24,11 @@ export default function App() {
     return calLocalCancelTI(csv.matrix, mol1.atoms, mol2.atoms, cancelRatio, hPower, mol1.bonds, mol2.bonds);
   }, [localBlurEnabled, csv, mol1, mol2, cancelRatio, hPower]);
 
+  const molecularTI = useMemo(() => {
+    if (!csv) return null;
+    return csv.matrix.reduce((sum, row) => sum + row.reduce((s, v) => s + v, 0), 0);
+  }, [csv]);
+
   const handleAtomClick = useCallback((monomer: 1 | 2, atomIndex: number) => {
     setSelected(prev => {
       if (monomer === 1) return { row: atomIndex, col: prev?.col ?? 0 };
@@ -75,6 +80,7 @@ export default function App() {
             isovalue={isovalue}
             selectedPair={selected}
             onAtomClick={handleAtomClick}
+            molecularTI={molecularTI}
           />
         </div>
         <div className="bg-white rounded-xl shadow flex flex-col overflow-hidden">
@@ -112,15 +118,17 @@ export default function App() {
                 <span className="text-slate-600 font-mono text-xs w-8">{cancelRatio.toFixed(2)}</span>
                 <span className="text-slate-500 text-xs">Apply Count</span>
                 <input
-                  type="range"
+                  type="number"
                   min={1}
-                  max={5}
+                  max={1000}
                   step={1}
                   value={hPower}
-                  onChange={e => setHPower(Number(e.target.value))}
-                  className="w-20 accent-blue-500"
+                  onChange={e => {
+                    const v = Math.floor(Number(e.target.value));
+                    if (!isNaN(v) && v >= 1 && v <= 1000) setHPower(v);
+                  }}
+                  className="w-16 bg-white border border-slate-300 rounded px-1.5 py-0.5 text-right font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
-                <span className="text-slate-600 font-mono text-xs w-4">{hPower}</span>
               </>
             )}
           </div>
