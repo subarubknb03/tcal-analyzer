@@ -17,6 +17,7 @@ interface Props {
   isovalue: number;
   selectedPair: SelectedPair | null;
   onAtomClick: (monomer: 1 | 2, atomIndex: number) => void;
+  molecularTI?: number | null;
 }
 
 const CPK_COLORS: Record<string, string> = {
@@ -44,7 +45,7 @@ function atomsToXyz(atoms: ParsedMolecule['atoms'], offset: number): string {
   return lines.join('\n');
 }
 
-export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick }: Props) {
+export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, molecularTI }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewerRef = useRef<any>(null);
@@ -129,6 +130,12 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
         {mol1 && <span className="bg-blue-500/80 text-white px-2 py-0.5 rounded">● Monomer 1</span>}
         {mol2 && <span className="bg-red-500/80 text-white px-2 py-0.5 rounded">● Monomer 2</span>}
       </div>
+      {molecularTI != null && (
+        <div className="absolute bottom-2 right-2 bg-slate-900/70 text-white text-xs px-2 py-0.5 rounded pointer-events-none">
+          <span className="text-slate-300">Intermolecular TI: </span>
+          <span className="font-mono font-semibold">{molecularTI.toFixed(4)}</span>
+        </div>
+      )}
     </div>
   );
 }
