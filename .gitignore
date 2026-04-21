@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Nix
+result
+result-*
+.direnv/
+
+# Node
+node_modules/
+dist/
+
+tmp*
