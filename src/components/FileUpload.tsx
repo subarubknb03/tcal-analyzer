@@ -33,16 +33,22 @@ interface DropZoneProps {
   label: string;
   accept: string;
   onFile: (file: File) => void;
+  onMultipleFiles?: (files: File[]) => void;
   loaded: boolean;
 }
 
-function DropZone({ label, accept, onFile, loaded }: DropZoneProps) {
+function DropZone({ label, accept, onFile, onMultipleFiles, loaded }: DropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) onFile(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 1 && onMultipleFiles) {
+      onMultipleFiles(files);
+    } else {
+      const file = files[0];
+      if (file) onFile(file);
+    }
   };
 
   return (
@@ -86,20 +92,65 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
     markLoaded();
   };
 
+  const distributeFiles = async (files: File[]) => {
+    const molFiles  = files.filter(f => /\.(gjf|xyz|mol)$/i.test(f.name));
+    const csvFiles  = files.filter(f => /\.csv$/i.test(f.name));
+    const cubeFiles = files.filter(f => /\.cube$/i.test(f.name));
+
+    if (csvFiles.length > 0) {
+      const text = await readTextFile(csvFiles[0]);
+      onCsvChange(parseCsv(text));
+      setCsvLoaded(true);
+    }
+
+    const mol1File = molFiles.find(f => /m1/i.test(f.name));
+    const mol2File = molFiles.find(f => /m2/i.test(f.name));
+    const unassignedMols = molFiles.filter(f => !/m[12]/i.test(f.name));
+    let ui = 0;
+    if (mol1File) {
+      await handleMol(mol1File, onMol1Change, () => setMol1Loaded(true));
+    } else if (ui < unassignedMols.length) {
+      await handleMol(unassignedMols[ui++], onMol1Change, () => setMol1Loaded(true));
+    }
+    if (mol2File) {
+      await handleMol(mol2File, onMol2Change, () => setMol2Loaded(true));
+    } else if (ui < unassignedMols.length) {
+      await handleMol(unassignedMols[ui++], onMol2Change, () => setMol2Loaded(true));
+    }
+
+    const cube1File = cubeFiles.find(f => /m1/i.test(f.name));
+    const cube2File = cubeFiles.find(f => /m2/i.test(f.name));
+    const unassignedCubes = cubeFiles.filter(f => !/m[12]/i.test(f.name));
+    let uc = 0;
+    if (cube1File) {
+      await handleCube(cube1File, onCube1Change, () => setCube1Loaded(true));
+    } else if (uc < unassignedCubes.length) {
+      await handleCube(unassignedCubes[uc++], onCube1Change, () => setCube1Loaded(true));
+    }
+    if (cube2File) {
+      await handleCube(cube2File, onCube2Change, () => setCube2Loaded(true));
+    } else if (uc < unassignedCubes.length) {
+      await handleCube(unassignedCubes[uc++], onCube2Change, () => setCube2Loaded(true));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow">
+      <p className="text-xs text-gray-400 text-center">You can drop all files at once onto any zone</p>
       <div className="grid grid-cols-3 gap-3">
         <DropZone
           label="Monomer 1 (.gjf / .xyz / .mol)"
           accept=".gjf,.xyz,.mol"
           loaded={mol1Loaded}
           onFile={f => handleMol(f, onMol1Change, () => setMol1Loaded(true))}
+          onMultipleFiles={distributeFiles}
         />
         <DropZone
           label="Monomer 2 (.gjf / .xyz / .mol)"
           accept=".gjf,.xyz,.mol"
           loaded={mol2Loaded}
           onFile={f => handleMol(f, onMol2Change, () => setMol2Loaded(true))}
+          onMultipleFiles={distributeFiles}
         />
         <DropZone
           label="Transfer Integral CSV"
@@ -110,6 +161,7 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
             onCsvChange(parseCsv(text));
             setCsvLoaded(true);
           }}
+          onMultipleFiles={distributeFiles}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -118,12 +170,14 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
           accept=".cube"
           loaded={cube1Loaded}
           onFile={f => handleCube(f, onCube1Change, () => setCube1Loaded(true))}
+          onMultipleFiles={distributeFiles}
         />
         <DropZone
           label="Molecular Orbital Cube 2 (.cube)"
           accept=".cube"
           loaded={cube2Loaded}
           onFile={f => handleCube(f, onCube2Change, () => setCube2Loaded(true))}
+          onMultipleFiles={distributeFiles}
         />
       </div>
     </div>
