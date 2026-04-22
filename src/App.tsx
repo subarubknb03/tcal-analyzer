@@ -6,6 +6,8 @@ import { HeatmapView } from './components/HeatmapView';
 import { InfoModal } from './components/InfoModal';
 import { calPattern1TI } from './utils/localCancelTIPattern1';
 import { calPattern2TI } from './utils/localCancelTIPattern2';
+import { buildAdjacencyMatrix } from './utils/bondDetection';
+import { serializeMol } from './utils/molSerializer';
 
 export default function App() {
   const [mol1, setMol1] = useState<ParsedMolecule | null>(null);
@@ -28,6 +30,14 @@ export default function App() {
   const [cancelRatio, setCancelRatio] = useState(1.0);
   const [hPower, setHPower] = useState(1);
   // --- End Pattern 2 params ---
+
+  // --- Bond Edit state ---
+  const [bondEditMode, setBondEditMode] = useState(false);
+  const [bondEditFirst, setBondEditFirst] = useState<{ monomer: 1 | 2; index: number } | null>(null);
+  const [bondEditPending, setBondEditPending] = useState<{
+    monomer: 1 | 2; a: number; b: number; currentOrder: number;
+  } | null>(null);
+  // --- End Bond Edit state ---
 
   const displayMatrix = useMemo(() => {
     if (!localBlurEnabled || !csv || !mol1 || !mol2) return null;
@@ -54,12 +64,65 @@ export default function App() {
     setCube2(cube1);
   };
 
-  const handleAtomClick = useCallback((monomer: 1 | 2, atomIndex: number) => {
-    setSelected(prev => {
-      if (monomer === 1) return { row: atomIndex, col: prev?.col ?? 0 };
-      return { row: prev?.row ?? 0, col: atomIndex };
+  const toggleBondEditMode = useCallback(() => {
+    setBondEditMode(prev => {
+      if (prev) { setBondEditFirst(null); setBondEditPending(null); }
+      return !prev;
     });
   }, []);
+
+  const handleAtomClick = useCallback((monomer: 1 | 2, atomIndex: number) => {
+    if (!bondEditMode) {
+      setSelected(prev => {
+        if (monomer === 1) return { row: atomIndex, col: prev?.col ?? 0 };
+        return { row: prev?.row ?? 0, col: atomIndex };
+      });
+      return;
+    }
+    if (!bondEditFirst) {
+      setBondEditFirst({ monomer, index: atomIndex });
+      return;
+    }
+    if (atomIndex === bondEditFirst.index && monomer === bondEditFirst.monomer) {
+      setBondEditFirst(null);
+      return;
+    }
+    if (monomer !== bondEditFirst.monomer) {
+      setBondEditFirst({ monomer, index: atomIndex });
+      return;
+    }
+    const mol = monomer === 1 ? mol1 : mol2;
+    const lo = Math.min(bondEditFirst.index, atomIndex);
+    const hi = Math.max(bondEditFirst.index, atomIndex);
+    const currentOrder = mol?.bondOrders
+      ? (mol.bondOrders[lo][hi] ?? 0)
+      : (mol?.bonds ? (mol.bonds[lo][hi] ?? 0) : 0);
+    setBondEditPending({ monomer, a: bondEditFirst.index, b: atomIndex, currentOrder });
+    setBondEditFirst(null);
+  }, [bondEditMode, bondEditFirst, mol1, mol2]);
+
+  const handleBondOrderChange = useCallback((newOrder: number) => {
+    if (!bondEditPending) return;
+    const { monomer, a, b } = bondEditPending;
+    const updateMol = (mol: ParsedMolecule): ParsedMolecule => {
+      const bonds = mol.bonds
+        ? mol.bonds.map(row => [...row])
+        : buildAdjacencyMatrix(mol.atoms);
+      const bondOrders = mol.bondOrders
+        ? mol.bondOrders.map(row => [...row])
+        : bonds.map(row => [...row]);
+      bonds[a][b] = newOrder > 0 ? 1 : 0;
+      bonds[b][a] = newOrder > 0 ? 1 : 0;
+      bondOrders[a][b] = newOrder;
+      bondOrders[b][a] = newOrder;
+      const updated = { ...mol, bonds, bondOrders };
+      updated.rawMolText = serializeMol(updated);
+      return updated;
+    };
+    if (monomer === 1) setMol1(prev => prev ? updateMol(prev) : prev);
+    else setMol2(prev => prev ? updateMol(prev) : prev);
+    setBondEditPending(null);
+  }, [bondEditPending]);
 
   const canSmooth = !!(csv && mol1 && mol2);
 
@@ -82,6 +145,8 @@ export default function App() {
         onCube2Change={setCube2}
         onSwapMonomers={swapMonomers}
         onSwapCubes={swapCubes}
+        mol1={mol1}
+        mol2={mol2}
       />
 
       <div className="flex-1 grid grid-cols-2 gap-4" style={{ minHeight: '60vh' }}>
@@ -101,6 +166,65 @@ export default function App() {
               />
             </div>
           )}
+          {(mol1 || mol2) && (
+            <div className="absolute top-2 left-2 z-10">
+              <button
+                onClick={toggleBondEditMode}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  bondEditMode
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'bg-slate-900/70 text-white hover:bg-slate-700/80'
+                }`}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Bond Edit
+              </button>
+              {bondEditMode && bondEditFirst && (
+                <div className="mt-1 bg-slate-900/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                  Atom {bondEditFirst.index + 1} (M{bondEditFirst.monomer}) — click 2nd atom
+                </div>
+              )}
+            </div>
+          )}
+          {bondEditPending && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="pointer-events-auto bg-slate-900/90 backdrop-blur-sm text-white rounded-xl shadow-xl px-5 py-4 flex flex-col gap-3 min-w-[220px]">
+                <div className="text-xs text-slate-300 text-center">
+                  Bond: atom {bondEditPending.a + 1} – {bondEditPending.b + 1}
+                  {' '}(M{bondEditPending.monomer})
+                </div>
+                <div className="flex gap-2 justify-center">
+                  {([0, 1, 2, 3] as const).map(order => {
+                    const labels = ['No Bond', 'Single', 'Double', 'Triple'];
+                    const isCurrent = order === bondEditPending.currentOrder;
+                    return (
+                      <button
+                        key={order}
+                        onClick={() => handleBondOrderChange(order)}
+                        className={`flex flex-col items-center px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                          isCurrent
+                            ? 'bg-blue-500 border-blue-400 text-white'
+                            : 'bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600'
+                        }`}
+                      >
+                        <span className="font-mono text-base leading-tight">{order}</span>
+                        <span>{labels[order]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setBondEditPending(null)}
+                  className="text-xs text-slate-400 hover:text-white text-center transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
           <MoleculeViewer
             mol1={mol1}
             mol2={mol2}
@@ -110,6 +234,7 @@ export default function App() {
             selectedPair={selected}
             onAtomClick={handleAtomClick}
             molecularTI={molecularTI}
+            bondEditFirstAtom={bondEditFirst}
           />
         </div>
         <div className="bg-white rounded-xl shadow flex flex-col overflow-hidden">

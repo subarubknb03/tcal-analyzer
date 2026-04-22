@@ -7,7 +7,8 @@ export interface Atom {
 
 export interface ParsedMolecule {
   atoms: Atom[];
-  bonds?: number[][];
+  bonds?: number[][];       // 0/1 の隣接行列（smoothing 用）
+  bondOrders?: number[][];  // 表示・シリアライズ用の結合次数行列（0-3）
   rawMolText?: string;
 }
 

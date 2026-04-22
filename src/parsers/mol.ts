@@ -17,14 +17,19 @@ export function parseMol(text: string): ParsedMolecule {
   }
 
   const adj: number[][] = Array.from({ length: nAtoms }, () => new Array(nAtoms).fill(0));
+  const bondOrders: number[][] = Array.from({ length: nAtoms }, () => new Array(nAtoms).fill(0));
   const bondStart = countsIdx + 1 + nAtoms;
   for (let i = 0; i < nBonds; i++) {
     const p = lines[bondStart + i].trim().split(/\s+/);
     const a = parseInt(p[0], 10) - 1;
     const b = parseInt(p[1], 10) - 1;
+    const order = parseInt(p[2], 10);
+    const safeOrder = order >= 1 && order <= 3 ? order : 1;
     adj[a][b] = 1;
     adj[b][a] = 1;
+    bondOrders[a][b] = safeOrder;
+    bondOrders[b][a] = safeOrder;
   }
 
-  return { atoms, bonds: adj, rawMolText: text };
+  return { atoms, bonds: adj, bondOrders, rawMolText: text };
 }
