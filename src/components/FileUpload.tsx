@@ -16,6 +16,11 @@ interface Props {
   onSwapCubes: () => void;
   mol1?: ParsedMolecule | null;
   mol2?: ParsedMolecule | null;
+  onMol1Clear?: () => void;
+  onMol2Clear?: () => void;
+  onCsvClear?: () => void;
+  onCube1Clear?: () => void;
+  onCube2Clear?: () => void;
 }
 
 function splitMolecule(mol: ParsedMolecule, n: number): [ParsedMolecule, ParsedMolecule] {
@@ -51,9 +56,10 @@ interface DropZoneProps {
   onMultipleFiles?: (files: File[]) => void;
   loaded: boolean;
   fileName?: string | null;
+  onClear?: () => void;
 }
 
-function DropZone({ label, accept, onFile, onMultipleFiles, loaded, fileName }: DropZoneProps) {
+function DropZone({ label, accept, onFile, onMultipleFiles, loaded, fileName, onClear }: DropZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -69,7 +75,7 @@ function DropZone({ label, accept, onFile, onMultipleFiles, loaded, fileName }: 
 
   return (
     <div
-      className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+      className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
         loaded ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 hover:border-blue-400 text-gray-500'
       }`}
       onDragOver={e => e.preventDefault()}
@@ -87,11 +93,20 @@ function DropZone({ label, accept, onFile, onMultipleFiles, loaded, fileName }: 
       <p className="text-xs mt-1 truncate max-w-full">
         {loaded ? (fileName ?? 'Loaded') : 'Click or drop'}
       </p>
+      {loaded && onClear && (
+        <button
+          onClick={e => { e.stopPropagation(); onClear(); }}
+          className="absolute bottom-1 right-1 text-xs px-2 py-1 rounded bg-slate-200 text-slate-500 hover:bg-slate-300 transition-colors"
+          title="削除"
+        >
+          Remove
+        </button>
+      )}
     </div>
   );
 }
 
-export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Change, onCube2Change, onSwapMonomers, onSwapCubes, mol1, mol2 }: Props) {
+export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Change, onCube2Change, onSwapMonomers, onSwapCubes, mol1, mol2, onMol1Clear, onMol2Clear, onCsvClear, onCube1Clear, onCube2Clear }: Props) {
   const [mol1Loaded, setMol1Loaded] = React.useState(false);
   const [mol2Loaded, setMol2Loaded] = React.useState(false);
   const [csvLoaded, setCsvLoaded] = React.useState(false);
@@ -209,6 +224,14 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
     onSwapCubes();
   };
 
+  const handleClearAll = () => {
+    setMol1Loaded(false); setMol1FileName(null); onMol1Clear?.();
+    setMol2Loaded(false); setMol2FileName(null); onMol2Clear?.();
+    setCsvLoaded(false); setCsvFileName(null); onCsvClear?.();
+    setCube1Loaded(false); setCube1FileName(null); onCube1Clear?.();
+    setCube2Loaded(false); setCube2FileName(null); onCube2Clear?.();
+  };
+
   const swapButtonClass =
     'flex-shrink-0 px-2 py-1 rounded text-base text-slate-400 hover:text-blue-500 hover:bg-slate-100 transition-colors';
 
@@ -224,6 +247,7 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
             fileName={mol1FileName}
             onFile={f => handleMol(f, onMol1Change, () => setMol1Loaded(true), setMol1FileName)}
             onMultipleFiles={distributeFiles}
+            onClear={() => { setMol1Loaded(false); setMol1FileName(null); onMol1Clear?.(); }}
           />
         </div>
         <div className={`flex-shrink-0 flex flex-col items-center py-1 ${onlyOneMolLoaded && totalAtoms >= 2 ? 'justify-between' : 'justify-center'}`}>
@@ -269,6 +293,7 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
             fileName={mol2FileName}
             onFile={f => handleMol(f, onMol2Change, () => setMol2Loaded(true), setMol2FileName)}
             onMultipleFiles={distributeFiles}
+            onClear={() => { setMol2Loaded(false); setMol2FileName(null); onMol2Clear?.(); }}
           />
         </div>
         <div className="flex-1">
@@ -284,6 +309,7 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
               setCsvFileName(f.name);
             }}
             onMultipleFiles={distributeFiles}
+            onClear={() => { setCsvLoaded(false); setCsvFileName(null); onCsvClear?.(); }}
           />
         </div>
       </div>
@@ -296,6 +322,7 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
             fileName={cube1FileName}
             onFile={f => handleCube(f, onCube1Change, () => setCube1Loaded(true), setCube1FileName)}
             onMultipleFiles={distributeFiles}
+            onClear={() => { setCube1Loaded(false); setCube1FileName(null); onCube1Clear?.(); }}
           />
         </div>
         <button
@@ -313,8 +340,18 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
             fileName={cube2FileName}
             onFile={f => handleCube(f, onCube2Change, () => setCube2Loaded(true), setCube2FileName)}
             onMultipleFiles={distributeFiles}
+            onClear={() => { setCube2Loaded(false); setCube2FileName(null); onCube2Clear?.(); }}
           />
         </div>
+        {(mol1Loaded || mol2Loaded || csvLoaded || cube1Loaded || cube2Loaded) && (
+          <button
+            onClick={handleClearAll}
+            className="flex-shrink-0 text-xs px-2 py-1 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors whitespace-nowrap"
+            title="すべてのデータを削除"
+          >
+            Clear All
+          </button>
+        )}
       </div>
     </div>
   );
