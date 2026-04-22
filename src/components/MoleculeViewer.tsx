@@ -18,6 +18,7 @@ interface Props {
   selectedPair: SelectedPair | null;
   onAtomClick: (monomer: 1 | 2, atomIndex: number) => void;
   molecularTI?: number | null;
+  bondEditFirstAtom?: { monomer: 1 | 2; index: number } | null;
 }
 
 const CPK_COLORS: Record<string, string> = {
@@ -45,7 +46,7 @@ function atomsToXyz(atoms: ParsedMolecule['atoms'], offset: number): string {
   return lines.join('\n');
 }
 
-export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, molecularTI }: Props) {
+export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, molecularTI, bondEditFirstAtom }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewerRef = useRef<any>(null);
@@ -70,6 +71,7 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
       defaultColor: string,
       monomer: 1 | 2,
       highlightIdx: number | null,
+      bondFirstIdx: number | null,
     ) => {
       const model = mol.rawMolText
         ? viewer.addModel(mol.rawMolText, 'sdf')
@@ -95,13 +97,26 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
         });
       }
 
+      if (bondFirstIdx !== null && bondFirstIdx < mol.atoms.length) {
+        model.setStyle(
+          { index: bondFirstIdx },
+          { sphere: { radius: 0.35, color: '#22c55e' }, stick: { radius: 0.1, color: defaultColor } },
+        );
+      }
+
       model.setClickable({}, true, (atom: { index: number }) => {
         onAtomClick(monomer, atom.index);
       });
     };
 
-    if (mol1) renderMol(mol1, '#60a5fa', 1, selectedPair?.row ?? null);
-    if (mol2) renderMol(mol2, '#f87171', 2, selectedPair?.col ?? null);
+    if (mol1) renderMol(mol1, '#60a5fa', 1,
+      selectedPair?.row ?? null,
+      bondEditFirstAtom?.monomer === 1 ? bondEditFirstAtom.index : null,
+    );
+    if (mol2) renderMol(mol2, '#f87171', 2,
+      selectedPair?.col ?? null,
+      bondEditFirstAtom?.monomer === 2 ? bondEditFirstAtom.index : null,
+    );
 
     const addIsosurfaces = (cube: ParsedCube) => {
       viewer.addVolumetricData(cube.rawText, 'cube', {
@@ -116,7 +131,7 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
 
     viewer.zoomTo();
     viewer.render();
-  }, [mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick]);
+  }, [mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, bondEditFirstAtom]);
 
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden bg-slate-800">

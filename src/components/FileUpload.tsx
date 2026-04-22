@@ -14,6 +14,19 @@ interface Props {
   onCube2Change: (cube: ParsedCube) => void;
   onSwapMonomers: () => void;
   onSwapCubes: () => void;
+  mol1?: ParsedMolecule | null;
+  mol2?: ParsedMolecule | null;
+}
+
+function splitMolecule(mol: ParsedMolecule, n: number): [ParsedMolecule, ParsedMolecule] {
+  const mol1Atoms = mol.atoms.slice(0, n);
+  const mol2Atoms = mol.atoms.slice(n);
+  const mol1Bonds = mol.bonds?.slice(0, n).map(row => row.slice(0, n));
+  const mol2Bonds = mol.bonds?.slice(n).map(row => row.slice(n));
+  return [
+    { atoms: mol1Atoms, bonds: mol1Bonds },
+    { atoms: mol2Atoms, bonds: mol2Bonds },
+  ];
 }
 
 function readTextFile(file: File): Promise<string> {
@@ -78,7 +91,7 @@ function DropZone({ label, accept, onFile, onMultipleFiles, loaded, fileName }: 
   );
 }
 
-export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Change, onCube2Change, onSwapMonomers, onSwapCubes }: Props) {
+export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Change, onCube2Change, onSwapMonomers, onSwapCubes, mol1, mol2 }: Props) {
   const [mol1Loaded, setMol1Loaded] = React.useState(false);
   const [mol2Loaded, setMol2Loaded] = React.useState(false);
   const [csvLoaded, setCsvLoaded] = React.useState(false);
@@ -91,6 +104,8 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
   const [cube1FileName, setCube1FileName] = React.useState<string | null>(null);
   const [cube2FileName, setCube2FileName] = React.useState<string | null>(null);
 
+  const [splitCount, setSplitCount] = React.useState<number | null>(null);
+
   const handleMol = async (
     file: File,
     setter: (mol: ParsedMolecule) => void,
@@ -101,6 +116,7 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
     setter(parseMolFile(file.name, text));
     markLoaded();
     setFileName(file.name);
+    setSplitCount(null);
   };
 
   const handleCube = async (
@@ -158,6 +174,25 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
     }
   };
 
+  const onlyOneMolLoaded = mol1Loaded !== mol2Loaded;
+  const loadedMol = mol1Loaded ? mol1 : mol2;
+  const totalAtoms = loadedMol?.atoms.length ?? 0;
+  const effectiveSplitCount = splitCount ?? Math.floor(totalAtoms / 2);
+
+  const handleSplit = () => {
+    if (!loadedMol || totalAtoms < 2) return;
+    const n = Math.max(1, Math.min(effectiveSplitCount, totalAtoms - 1));
+    const [splitMol1, splitMol2] = splitMolecule(loadedMol, n);
+    const baseName = mol1Loaded ? mol1FileName : mol2FileName;
+    onMol1Change(splitMol1);
+    onMol2Change(splitMol2);
+    setMol1Loaded(true);
+    setMol2Loaded(true);
+    setMol1FileName(baseName ? `${baseName} (1–${n})` : null);
+    setMol2FileName(baseName ? `${baseName} (${n + 1}–${totalAtoms})` : null);
+    setSplitCount(null);
+  };
+
   const handleSwapMonomers = () => {
     const [l1, l2] = [mol1Loaded, mol2Loaded];
     const [f1, f2] = [mol1FileName, mol2FileName];
@@ -180,7 +215,7 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
   return (
     <div className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow">
       <p className="text-xs text-gray-400 text-center">You can drop all files at once onto any zone</p>
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-3 items-stretch">
         <div className="flex-1">
           <DropZone
             label="Monomer 1 (.gjf / .xyz / .mol)"
@@ -191,13 +226,41 @@ export function FileUpload({ onMol1Change, onMol2Change, onCsvChange, onCube1Cha
             onMultipleFiles={distributeFiles}
           />
         </div>
-        <button
-          className={swapButtonClass}
-          onClick={handleSwapMonomers}
-          title="Monomer 1 / 2 を入れ替え"
-        >
-          ⇄
-        </button>
+        <div className={`flex-shrink-0 flex flex-col items-center py-1 ${onlyOneMolLoaded && totalAtoms >= 2 ? 'justify-between' : 'justify-center'}`}>
+          <button
+            className={swapButtonClass}
+            onClick={handleSwapMonomers}
+            title="Monomer 1 / 2 を入れ替え"
+          >
+            ⇄
+          </button>
+          {onlyOneMolLoaded && totalAtoms >= 2 && (
+            <>
+              <div className="flex items-center gap-0.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={totalAtoms - 1}
+                  value={effectiveSplitCount}
+                  onChange={e => {
+                    const v = Math.floor(Number(e.target.value));
+                    if (!isNaN(v)) setSplitCount(v);
+                  }}
+                  className="w-10 bg-white border border-slate-300 rounded px-0.5 py-0.5 text-center font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  title="Monomer1の原子数"
+                />
+                <span className="text-xs text-slate-400">/{totalAtoms}</span>
+              </div>
+              <button
+                onClick={handleSplit}
+                className="text-xs px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                title="ファイルを分割"
+              >
+                Split
+              </button>
+            </>
+          )}
+        </div>
         <div className="flex-1">
           <DropZone
             label="Monomer 2 (.gjf / .xyz / .mol)"
