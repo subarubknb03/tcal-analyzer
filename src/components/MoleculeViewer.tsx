@@ -120,10 +120,10 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
 
     const addIsosurfaces = (cube: ParsedCube) => {
       viewer.addVolumetricData(cube.rawText, 'cube', {
-        isoval: isovalue, color: '#0041ff', opacity: 0.85, smoothness: 15,
+        isoval: isovalue, color: '#0041ff', opacity: 0.85, smoothness: 2,
       });
       viewer.addVolumetricData(cube.rawText, 'cube', {
-        isoval: -isovalue, color: '#fff500', opacity: 0.85, smoothness: 15,
+        isoval: -isovalue, color: '#fff500', opacity: 0.85, smoothness: 2,
       });
     };
     if (cube1) addIsosurfaces(cube1);

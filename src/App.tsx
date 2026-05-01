@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import faviconPng from '../public/favicon-180.png';
 import type { ParsedMolecule, ParsedCsv, ParsedCube, SelectedPair } from './types';
 import { FileUpload } from './components/FileUpload';
 import { MoleculeViewer } from './components/MoleculeViewer';
@@ -139,11 +140,14 @@ export default function App() {
       />
     )}
     <div className="min-h-screen bg-slate-100 flex flex-col gap-4 p-4">
-      <header className="bg-white rounded-xl shadow px-4 py-3">
+      <header className="bg-white rounded-xl shadow px-4 py-3 flex items-center gap-3">
+        <img src={faviconPng} alt="tcal analyzer logo" className="w-8 h-8" />
+        <div>
         <h1 className="text-lg font-semibold text-slate-800">tcal analyzer</h1>
         <p className="text-xs text-slate-500 mt-0.5">
           Upload monomer files (.gjf / .xyz / .mol) and transfer integral CSV
         </p>
+        </div>
       </header>
 
       <FileUpload
