@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import faviconPng from '../public/favicon-180.png';
 import type { ParsedMolecule, ParsedCsv, ParsedCube, SelectedPair } from './types';
 import { FileUpload } from './components/FileUpload';
 import { MoleculeViewer } from './components/MoleculeViewer';
@@ -11,6 +10,7 @@ import { buildAdjacencyMatrix } from './utils/bondDetection';
 import { serializeMol } from './utils/molSerializer';
 
 export default function App() {
+  const faviconPng = `${import.meta.env.BASE_URL}favicon-180.png`;
   const [mol1, setMol1] = useState<ParsedMolecule | null>(null);
   const [mol2, setMol2] = useState<ParsedMolecule | null>(null);
   const [csv, setCsv] = useState<ParsedCsv | null>(null);
@@ -349,6 +349,10 @@ export default function App() {
           <span className="text-slate-400">Select a cell in the heatmap</span>
         )}
       </div>
+
+      <footer className="text-center text-xs text-slate-500 py-1">
+        © 2026 Koki Ozawa
+      </footer>
     </div>
     </>
   );
