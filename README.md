@@ -9,7 +9,8 @@ A browser-based visualization tool for interatomic transfer integrals in molecul
 - **3D molecular visualization** — interactive structure viewer for dimer systems (3Dmol.js)
 - **Transfer integral heatmap** — clickable matrix view with cross-selection to/from the 3D viewer
 - **Molecular orbital isosurfaces** — render HOMO/LUMO from Gaussian `.cube` files with adjustable isovalue
-- **Local smoothing** — graph signal processing filter (symmetric normalized Laplacian) applied to the transfer integral matrix
+- **Substructure TI** — select multiple atoms from each monomer to compute the summed transfer integral over all selected atom pairs; highlights the corresponding sub-matrix in the heatmap
+- **Local smoothing** — graph signal processing filter (symmetric normalized Laplacian) applied to the transfer integral matrix; when Substructure Mode is active, smoothing is applied to the selected sub-matrix only
 - **Cross-selection** — click an atom in the 3D viewer to highlight its row/column in the heatmap, and vice versa
 
 ## Supported File Formats
@@ -57,23 +58,8 @@ cd /mnt/workspace && npm run dev
 2. Upload a transfer integral matrix as a `.csv` file
 3. Optionally upload `.cube` files for molecular orbital visualization
 4. Click atoms in the 3D viewer or cells in the heatmap — selections sync between both views
-5. Enable **Local Smoothing** to apply graph-based filtering to the transfer integral matrix
-
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── FileUpload.tsx       # drag-and-drop upload zones
-│   ├── MoleculeViewer.tsx   # 3Dmol.js 3D viewer
-│   ├── HeatmapView.tsx      # Plotly heatmap
-│   └── InfoModal.tsx        # local smoothing formula modal
-├── parsers/
-│   ├── gjf.ts, xyz.ts, mol.ts, csv.ts, cube.ts
-└── utils/
-    ├── bondDetection.ts     # covalent radius adjacency matrix
-    └── localCancelTI.ts     # local smoothing algorithm
-```
+5. Enable **Substructure Mode** to select multiple atoms from each monomer; the status bar shows the summed transfer integral over all selected atom pairs
+6. Enable **Local Smoothing** to apply graph-based filtering to the transfer integral matrix (applies to the selected sub-matrix when Substructure Mode is active)
 
 ## License
 
