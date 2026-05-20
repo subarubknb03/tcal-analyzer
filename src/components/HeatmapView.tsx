@@ -9,9 +9,12 @@ interface Props {
   displayMatrix?: number[][] | null;
   selectedPair: SelectedPair | null;
   onCellClick: (row: number, col: number) => void;
+  substructureMode?: boolean;
+  subRows?: Set<number>;
+  subCols?: Set<number>;
 }
 
-export function HeatmapView({ csv, displayMatrix, selectedPair, onCellClick }: Props) {
+export function HeatmapView({ csv, displayMatrix, selectedPair, onCellClick, substructureMode, subRows, subCols }: Props) {
   if (!csv) {
     return (
       <div className="flex items-center justify-center h-full text-slate-400 text-sm">
@@ -42,6 +45,26 @@ export function HeatmapView({ csv, displayMatrix, selectedPair, onCellClick }: P
       y: [csv.rowLabels[selectedPair.row]],
       mode: 'markers',
       marker: { symbol: 'square-open', size: 18, color: '#facc15', line: { width: 3 } },
+      showlegend: false,
+      hoverinfo: 'skip',
+    });
+  }
+
+  if (substructureMode && subRows?.size && subCols?.size) {
+    const xs: string[] = [];
+    const ys: string[] = [];
+    for (const r of subRows) {
+      for (const c of subCols) {
+        ys.push(csv.rowLabels[r]);
+        xs.push(csv.colLabels[c]);
+      }
+    }
+    plotData.push({
+      type: 'scatter',
+      x: xs,
+      y: ys,
+      mode: 'markers',
+      marker: { symbol: 'square', size: 14, color: 'rgba(34,197,94,0.35)', line: { color: '#22c55e', width: 2 } },
       showlegend: false,
       hoverinfo: 'skip',
     });
