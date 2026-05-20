@@ -33,10 +33,24 @@ export default function App() {
   } | null>(null);
   // --- End Bond Edit state ---
 
+  // --- Substructure Analysis state ---
+  const [substructureMode, setSubstructureMode] = useState(false);
+  const [subRows, setSubRows] = useState<Set<number>>(new Set());
+  const [subCols, setSubCols] = useState<Set<number>>(new Set());
+  // --- End Substructure Analysis state ---
+
   const displayMatrix = useMemo(() => {
     if (!localBlurEnabled || !csv || !mol1 || !mol2) return null;
     return calPattern1TI(csv.matrix, mol1.atoms, mol2.atoms, p1Weight, p1Power, mol1.bonds, mol2.bonds);
   }, [localBlurEnabled, csv, mol1, mol2, p1Weight, p1Power]);
+
+  const substructureTI = useMemo(() => {
+    const m = displayMatrix ?? csv?.matrix;
+    if (!m || subRows.size === 0 || subCols.size === 0) return null;
+    let sum = 0;
+    for (const r of subRows) for (const c of subCols) sum += m[r]?.[c] ?? 0;
+    return sum;
+  }, [displayMatrix, csv, subRows, subCols]);
 
   const molecularTI = useMemo(() => {
     const m = displayMatrix ?? csv?.matrix;
@@ -61,7 +75,46 @@ export default function App() {
     });
   }, []);
 
+  const toggleSubstructureMode = useCallback(() => {
+    setSubstructureMode(prev => {
+      if (prev) { setSubRows(new Set()); setSubCols(new Set()); }
+      else { setSelected(null); }
+      return !prev;
+    });
+  }, []);
+
+  const handleSelectAllM1 = useCallback(() => {
+    if (!mol1) return;
+    setSubRows(new Set(mol1.atoms.map((_, i) => i)));
+  }, [mol1]);
+
+  const handleSelectAllM2 = useCallback(() => {
+    if (!mol2) return;
+    setSubCols(new Set(mol2.atoms.map((_, i) => i)));
+  }, [mol2]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSubRows(new Set());
+    setSubCols(new Set());
+  }, []);
+
   const handleAtomClick = useCallback((monomer: 1 | 2, atomIndex: number) => {
+    if (substructureMode) {
+      if (monomer === 1) {
+        setSubRows(prev => {
+          const next = new Set(prev);
+          if (next.has(atomIndex)) next.delete(atomIndex); else next.add(atomIndex);
+          return next;
+        });
+      } else {
+        setSubCols(prev => {
+          const next = new Set(prev);
+          if (next.has(atomIndex)) next.delete(atomIndex); else next.add(atomIndex);
+          return next;
+        });
+      }
+      return;
+    }
     if (!bondEditMode) {
       setSelected(prev => {
         if (monomer === 1) return { row: atomIndex, col: prev?.col ?? 0 };
@@ -89,7 +142,7 @@ export default function App() {
       : (mol?.bonds ? (mol.bonds[lo][hi] ?? 0) : 0);
     setBondEditPending({ monomer, a: bondEditFirst.index, b: atomIndex, currentOrder });
     setBondEditFirst(null);
-  }, [bondEditMode, bondEditFirst, mol1, mol2]);
+  }, [substructureMode, bondEditMode, bondEditFirst, mol1, mol2]);
 
   const handleBondOrderChange = useCallback((newOrder: number) => {
     if (!bondEditPending) return;
@@ -115,27 +168,38 @@ export default function App() {
   }, [bondEditPending]);
 
   const handleRunConvergence = useCallback(async () => {
-    if (!csv || !mol1 || !mol2 || !selected) return;
+    if (!csv || !mol1 || !mol2) return;
+    const isSubstructureRun = substructureMode && subRows.size > 0 && subCols.size > 0;
+    if (!isSubstructureRun && !selected) return;
     setConvergenceLoading(true);
     await new Promise(r => setTimeout(r, 0));
     const counts = [1, ...Array.from({ length: 20 }, (_, i) => (i + 1) * 10)];
-    const values = counts.map(count =>
-      calPattern1TI(csv.matrix, mol1.atoms, mol2.atoms, p1Weight, count, mol1.bonds, mol2.bonds)
-        [selected.row][selected.col]
-    );
+    const values = counts.map(count => {
+      const m = calPattern1TI(csv.matrix, mol1.atoms, mol2.atoms, p1Weight, count, mol1.bonds, mol2.bonds);
+      if (isSubstructureRun) {
+        let sum = 0;
+        for (const r of subRows) for (const c of subCols) sum += m[r]?.[c] ?? 0;
+        return sum;
+      }
+      return m[selected!.row][selected!.col];
+    });
     setConvergenceData({ counts, values });
     setConvergenceLoading(false);
-  }, [csv, mol1, mol2, selected, p1Weight]);
+  }, [csv, mol1, mol2, selected, p1Weight, substructureMode, subRows, subCols]);
 
   const canSmooth = !!(csv && mol1 && mol2);
 
   return (
     <>
     {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
-    {convergenceData && selected && csv && (
+    {convergenceData && csv && (selected || (substructureMode && subRows.size > 0 && subCols.size > 0)) && (
       <TIConvergenceChart
         data={convergenceData}
-        selectedLabel={`m1[${csv.rowLabels[selected.row] ?? selected.row}] × m2[${csv.colLabels[selected.col] ?? selected.col}]`}
+        selectedLabel={
+          substructureMode && subRows.size > 0 && subCols.size > 0
+            ? `Substructure TI (M1: ${subRows.size} atoms / M2: ${subCols.size} atoms)`
+            : `m1[${csv.rowLabels[selected!.row] ?? selected!.row}] × m2[${csv.colLabels[selected!.col] ?? selected!.col}]`
+        }
         onClose={() => setConvergenceData(null)}
       />
     )}
@@ -185,10 +249,11 @@ export default function App() {
             </div>
           )}
           {(mol1 || mol2) && (
-            <div className="absolute top-2 left-2 z-10">
+            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
               <button
                 onClick={toggleBondEditMode}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                disabled={substructureMode}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   bondEditMode
                     ? 'bg-amber-500 text-white shadow-md'
                     : 'bg-slate-900/70 text-white hover:bg-slate-700/80'
@@ -201,9 +266,55 @@ export default function App() {
                 Bond Edit
               </button>
               {bondEditMode && bondEditFirst && (
-                <div className="mt-1 bg-slate-900/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                <div className="bg-slate-900/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
                   Atom {bondEditFirst.index + 1} (M{bondEditFirst.monomer}) — click 2nd atom
                 </div>
+              )}
+              <button
+                onClick={toggleSubstructureMode}
+                disabled={bondEditMode}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  substructureMode
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'bg-slate-900/70 text-white hover:bg-slate-700/80'
+                }`}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                Substructure
+              </button>
+              {substructureMode && (
+                <>
+                  <div className="bg-emerald-900/80 text-emerald-100 text-xs px-2 py-1 rounded whitespace-nowrap">
+                    M1: {subRows.size} atoms / M2: {subCols.size} atoms
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={mol1 && subRows.size === mol1.atoms.length ? () => setSubRows(new Set()) : handleSelectAllM1}
+                      disabled={!mol1}
+                      className="flex-1 px-2 py-1 rounded-lg text-xs font-medium bg-blue-600/80 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {mol1 && subRows.size === mol1.atoms.length ? 'M1 Deselect' : 'M1 Select All'}
+                    </button>
+                    <button
+                      onClick={mol2 && subCols.size === mol2.atoms.length ? () => setSubCols(new Set()) : handleSelectAllM2}
+                      disabled={!mol2}
+                      className="flex-1 px-2 py-1 rounded-lg text-xs font-medium bg-red-600/80 text-white hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {mol2 && subCols.size === mol2.atoms.length ? 'M2 Deselect' : 'M2 Select All'}
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleDeselectAll}
+                    className="px-2 py-1 rounded-lg text-xs font-medium bg-slate-600/80 text-white hover:bg-slate-500"
+                  >
+                    Deselect All
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -253,6 +364,9 @@ export default function App() {
             onAtomClick={handleAtomClick}
             molecularTI={molecularTI}
             bondEditFirstAtom={bondEditFirst}
+            substructureMode={substructureMode}
+            subRows={subRows}
+            subCols={subCols}
           />
         </div>
         <div className="bg-white rounded-xl shadow flex flex-col overflow-hidden">
@@ -306,8 +420,11 @@ export default function App() {
                 />
                 <button
                   onClick={handleRunConvergence}
-                  disabled={convergenceLoading || !selected}
-                  title={selected ? 'Apply Count 収束グラフを表示' : 'ヒートマップでセルを選択してください'}
+                  disabled={convergenceLoading || (substructureMode ? subRows.size === 0 || subCols.size === 0 : !selected)}
+                  title={substructureMode
+                    ? (subRows.size > 0 && subCols.size > 0 ? 'Substructure TI 収束グラフを表示' : '両モノマーから原子を選択してください')
+                    : (selected ? 'Apply Count 収束グラフを表示' : 'ヒートマップでセルを選択してください')
+                  }
                   className="flex items-center justify-center w-6 h-6 rounded bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   {convergenceLoading ? (
@@ -329,24 +446,44 @@ export default function App() {
               displayMatrix={displayMatrix}
               selectedPair={selected}
               onCellClick={(row, col) => setSelected({ row, col })}
+              substructureMode={substructureMode}
+              subRows={subRows}
+              subCols={subCols}
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow px-4 py-3 text-sm text-slate-700">
-        <span className="font-medium">Selected:</span>{' '}
-        {selected && csv ? (
-          <>
-            m1[{csv.rowLabels[selected.row] ?? selected.row}] ×
-            m2[{csv.colLabels[selected.col] ?? selected.col}]
-            {' '}&nbsp;→&nbsp;
-            <span className="font-mono font-semibold text-blue-600">
-              {(displayMatrix ?? csv.matrix)[selected.row]?.[selected.col]?.toFixed(4) ?? '—'}
-            </span>
-          </>
-        ) : (
-          <span className="text-slate-400">Select a cell in the heatmap</span>
+      <div className="bg-white rounded-xl shadow px-4 py-3 text-sm text-slate-700 flex flex-wrap gap-4 items-center">
+        <div>
+          <span className="font-medium">Selected:</span>{' '}
+          {selected && csv ? (
+            <>
+              m1[{csv.rowLabels[selected.row] ?? selected.row}] ×
+              m2[{csv.colLabels[selected.col] ?? selected.col}]
+              {' '}&nbsp;→&nbsp;
+              <span className="font-mono font-semibold text-blue-600">
+                {(displayMatrix ?? csv.matrix)[selected.row]?.[selected.col]?.toFixed(4) ?? '—'}
+              </span>
+            </>
+          ) : (
+            <span className="text-slate-400">Select a cell in the heatmap</span>
+          )}
+        </div>
+        {substructureMode && (
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-emerald-700">Substructure TI:</span>{' '}
+            {substructureTI !== null ? (
+              <span className="font-mono font-semibold text-emerald-600">{substructureTI.toFixed(4)}</span>
+            ) : (
+              <span className="text-slate-400">Select atoms from both monomers in the 3D viewer</span>
+            )}
+            {substructureTI !== null && (
+              <span className="text-xs text-slate-400">
+                (mol1: {subRows.size} atoms / mol2: {subCols.size} atoms)
+              </span>
+            )}
+          </div>
         )}
       </div>
 

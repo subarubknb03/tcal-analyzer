@@ -19,6 +19,9 @@ interface Props {
   onAtomClick: (monomer: 1 | 2, atomIndex: number) => void;
   molecularTI?: number | null;
   bondEditFirstAtom?: { monomer: 1 | 2; index: number } | null;
+  substructureMode?: boolean;
+  subRows?: Set<number>;
+  subCols?: Set<number>;
 }
 
 const CPK_COLORS: Record<string, string> = {
@@ -46,7 +49,7 @@ function atomsToXyz(atoms: ParsedMolecule['atoms'], offset: number): string {
   return lines.join('\n');
 }
 
-export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, molecularTI, bondEditFirstAtom }: Props) {
+export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, molecularTI, bondEditFirstAtom, substructureMode, subRows, subCols }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewerRef = useRef<any>(null);
@@ -80,6 +83,20 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
         sphere: { radius: 0.3, colorfunc: (atom: { elem: string }) => cpkColor(atom.elem) },
         stick: { radius: 0.1, color: defaultColor },
       });
+
+      if (substructureMode) {
+        const subIndices = monomer === 1 ? subRows : subCols;
+        if (subIndices) {
+          for (const idx of subIndices) {
+            if (idx < mol.atoms.length) {
+              model.setStyle(
+                { index: idx },
+                { sphere: { radius: 0.35, color: '#22c55e' }, stick: { radius: 0.1, color: defaultColor } },
+              );
+            }
+          }
+        }
+      }
 
       if (highlightIdx !== null && highlightIdx < mol.atoms.length) {
         model.setStyle(
@@ -131,7 +148,7 @@ export function MoleculeViewer({ mol1, mol2, cube1, cube2, isovalue, selectedPai
 
     viewer.zoomTo();
     viewer.render();
-  }, [mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, bondEditFirstAtom]);
+  }, [mol1, mol2, cube1, cube2, isovalue, selectedPair, onAtomClick, bondEditFirstAtom, substructureMode, subRows, subCols]);
 
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden bg-slate-800">
