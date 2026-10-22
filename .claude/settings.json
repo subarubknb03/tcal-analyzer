@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/protect-env-secrets.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/protect-git-push.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/typecheck-python.py\""
+          }
+        ]
+      }
+    ]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "permissions": {
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(rm:*)",
+      "Bash(rm -rf:*)",
+      "Read(.env)",
+      "Read(**.env)",
+      "Read(**/.env)",
+      "Read(.env.*)",
+      "Read(**.env.*)",
+      "Read(**/.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(id_rsa)",
+      "Read(id_ed25519)",
+      "Read(**/*token*)",
+      "Read(**/*key*)",
+      "Bash(cat .env)",
+      "Bash(cat **.env)",
+      "Bash(cat **/.env)",
+      "Bash(cat .env.*)",
+      "Bash(cat **.env.*)",
+      "Bash(cat **/.env.*)",
+      "Bash(cat ~/.ssh/**)",
+      "Bash(cat **/id_rsa)",
+      "Bash(cat **/id_ed25519)",
+      "Bash(cat **/*token*)",
+      "Bash(cat **/*key*)",
+      "Edit(.env*)",
+      "Edit(**/secrets/**)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(nc:*)",
+      "Bash(psql:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git checkout main)",
+      "Bash(git checkout main *)",
+      "Bash(git switch main)",
+      "Bash(git switch main *)",
+      "Bash(git merge main)",
+      "Bash(git merge main *)",
+      "Bash(git push * main)",
+      "Bash(git push * main *)",
+      "Bash(git push --force)",
+      "Bash(git push --force *)",
+      "Bash(git push -f)",
+      "Bash(git push -f *)",
+      "Bash(git push * --force)",
+      "Bash(git push * --force *)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(git branch -D main)",
+      "Bash(git branch -d main)",
+      "Bash(git clean:*)",
+      "Bash(git worktree remove:*)"
+    ],
+    "ask": [],
+    "allow": []
+  },
+  "sandbox": {
+    "enabled": true,
+    "excludedCommands": ["codex *", "cursor-agent *"],
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh"
+      ]
+    }
+  },
+  "language": "japanese",
+  "theme": "dark",
+  "remoteControlAtStartup": true,
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
+  "showThinkingSummaries": true
+}

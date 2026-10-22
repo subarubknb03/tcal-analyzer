@@ -15,7 +15,7 @@
         packages.default = pkgs.buildEnv {
           name = "tcal-analyzer-env";
           paths = with pkgs; [
-            nodejs_22
+            nodejs_24
             git
             neovim
             zsh
@@ -32,7 +32,7 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            nodejs_22
+            nodejs_24
             git
             neovim
             zsh

@@ -9,5 +9,6 @@ result-*
 # Node
 node_modules/
 dist/
+docs/
 
 tmp*
